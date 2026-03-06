@@ -44,6 +44,7 @@ def build_bronze_paths(bucket: str, bronze_prefix: str, date: Optional[str]) -> 
 
 
 def read_bronze(spark: SparkSession, paths: list):
+    # Load every JSONL.gz under the patterns; keep ingest timestamp + filename for lineage.
     return (
         spark.read.option("recursiveFileLookup", "true")
         .json(paths)

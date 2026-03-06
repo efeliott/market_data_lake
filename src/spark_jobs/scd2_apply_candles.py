@@ -41,12 +41,14 @@ def read_silver_candles(spark, bucket, silver_prefix, date):
 def read_existing_scd2(spark, bucket, prefix):
     path = f"gs://{bucket}/{prefix}/candles"
     try:
+        # Previous SCD2 state is optional; start fresh when missing.
         return spark.read.parquet(path)
     except Exception:
         return None
 
 
 def compute_hash(df):
+    # Hash every value that defines a change in the row; used to detect updates.
     return F.sha2(
         F.concat_ws(
             "||",

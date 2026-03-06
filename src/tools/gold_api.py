@@ -16,6 +16,7 @@ Run locally:
 """
 
 import os
+import json
 from functools import lru_cache
 from typing import Optional
 
@@ -41,6 +42,7 @@ def gcs_filesystem():
 
 @lru_cache(maxsize=4)
 def load_gold(dataset: str) -> pd.DataFrame:
+    """Load a Gold parquet dataset from GCS with light caching to avoid re-reads."""
     fs = gcs_filesystem()
     rel_path = f"{BUCKET}/{GOLD_PREFIX}/{dataset}"
     full_path = f"gs://{rel_path}"
@@ -53,13 +55,26 @@ def load_gold(dataset: str) -> pd.DataFrame:
             raise HTTPException(status_code=404, detail=f"Dataset not found: {full_path}") from exc
 
 
+def load_predictions_json():
+    fs = gcs_filesystem()
+    path = f"{BUCKET}/{GOLD_PREFIX}/predictions/latest.json"
+    try:
+        with fs.open(path, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        # If predictions are absent, return an empty payload instead of 404 so the UI can stay graceful.
+        return {"generated_at": None, "predictions": []}
+
+
 def filter_df(df: pd.DataFrame, asset_type: str, symbol: str, limit: int) -> pd.DataFrame:
+    # Keep only the requested series, newest first, capped by limit
     filtered = df[(df["asset_type"] == asset_type) & (df["symbol"] == symbol)]
     filtered = filtered.sort_values("ts_utc", ascending=False).head(limit)
     return filtered
 
 
 def make_recommendation(df_returns: pd.DataFrame) -> dict:
+    # Tiny slope-based heuristic: positive slope => buy, negative => sell, else hold.
     if df_returns.empty:
         return {"action": "insufficient-data"}
     closes = df_returns.sort_values("ts_utc")["close"].tail(30)
@@ -101,6 +116,17 @@ def list_symbols(asset_type: Optional[str] = None):
         df = df[df["asset_type"] == asset_type]
     uniq = df[["asset_type", "symbol"]].drop_duplicates().sort_values(["asset_type", "symbol"])
     return uniq.to_dict(orient="records")
+
+
+@app.get("/predict")
+def get_predictions(asset_type: Optional[str] = None, symbol: Optional[str] = None):
+    data = load_predictions_json()
+    preds = data.get("predictions", [])
+    if asset_type:
+        preds = [p for p in preds if p.get("asset_type") == asset_type]
+    if symbol:
+        preds = [p for p in preds if p.get("symbol") == symbol]
+    return {"generated_at": data.get("generated_at"), "predictions": preds}
 
 
 @app.get("/volatility")

@@ -2,11 +2,14 @@ import os
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()  # charge le .env à la racine
+# Load .env at repo root so local tests pick up secrets
+load_dotenv()
 
 api_key = os.environ.get("TWELVEDATA_API_KEY")
 
+
 def check(url: str):
+    """Hit an upstream API endpoint and print a short diagnostic snapshot."""
     r = requests.get(url, timeout=30)
     print("=" * 80)
     print("GET", r.url)
@@ -17,6 +20,7 @@ def check(url: str):
         keys = list(data.keys())[:10]
         print("json keys (top 10):", keys)
     print("sample:", str(data)[:400])
+
 
 if __name__ == "__main__":
     check("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd,eur")

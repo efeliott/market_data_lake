@@ -51,7 +51,12 @@ def write_gcs_bytes(client: storage.Client, bucket: str, object_name: str, data:
 
 def main():
     load_dotenv()
-    base_url = os.environ.get("COINGECKO_URL", "https://api.coingecko.com/api/v3")
+    # If COINGECKO_URL was set to the spot endpoint (simple/price), ignore it for history.
+    env_url = os.environ.get("COINGECKO_URL")
+    if env_url and "simple/price" in env_url:
+        base_url = "https://api.coingecko.com/api/v3"
+    else:
+        base_url = env_url or "https://api.coingecko.com/api/v3"
     ids_raw = os.environ.get("COINGECKO_IDS", "bitcoin,ethereum")
     vs_currency = os.environ.get("VS_CURRENCY", "usd")
     days = os.environ.get("DAYS", "90")  # or "max"

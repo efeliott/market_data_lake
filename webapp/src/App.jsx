@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { fetchReturns, fetchVol, fetchRecommendation, fetchSymbols } from './api'
+import { fetchReturns, fetchVol, fetchRecommendation, fetchSymbols, fetchPredictions } from './api'
 import Chart from 'chart.js/auto'
 
 function useChart(canvasId, label, color) {
@@ -23,6 +23,8 @@ export default function App() {
   const [symbol, setSymbol] = useState('')
   const [symbols, setSymbols] = useState([])
   const [rec, setRec] = useState(null)
+  const [preds, setPreds] = useState([])
+  const [predAt, setPredAt] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -33,10 +35,11 @@ export default function App() {
     setLoading(true)
     setError('')
     try {
-      const [rets, vols, recResp] = await Promise.all([
+      const [rets, vols, recResp, predResp] = await Promise.all([
         fetchReturns(assetType, symbol, 180),
         fetchVol(assetType, symbol, 180),
         fetchRecommendation(assetType, symbol),
+        fetchPredictions(assetType, symbol),
       ])
       if (returnsChart) {
         returnsChart.data.labels = rets.map((r) => r.date).reverse()
@@ -49,6 +52,8 @@ export default function App() {
         volChart.update()
       }
       setRec(recResp)
+      setPreds(predResp?.predictions || [])
+      setPredAt(predResp?.generated_at || '')
     } catch (e) {
       setError(e.message)
     } finally {
@@ -78,7 +83,7 @@ export default function App() {
     <div className="page">
       <header>
         <h1>Market Lake Gold Viewer</h1>
-        <p>Visualise Gold returns/volatility & simple linear-slope signal.</p>
+        <p>Visualise Gold returns/volatility plus rule-based and ML signals.</p>
       </header>
 
       <section className="controls">
@@ -120,10 +125,43 @@ export default function App() {
         <h3>Recommendation</h3>
         {rec ? (
           <div className={`badge ${rec.action}`}>
-            {rec.action.toUpperCase()} — slope: {rec.slope?.toFixed(5)} | last close: {rec.last_close?.toFixed(2)}
+            {rec.action.toUpperCase()} - slope: {rec.slope?.toFixed(5)} | last close: {rec.last_close?.toFixed(2)}
           </div>
         ) : (
           <div>Waiting for data...</div>
+        )}
+      </section>
+
+      <section className="predictions card">
+        <div className="pred-header">
+          <h3>ML Prediction (lasso)</h3>
+          <span className="muted">{predAt ? `generated ${predAt}` : 'no run yet'}</span>
+        </div>
+        {preds.length ? (
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Action</th>
+                <th>Pred 1d return</th>
+                <th>Samples</th>
+              </tr>
+            </thead>
+            <tbody>
+              {preds.slice(0, 5).map((p) => (
+                <tr key={`${p.asset_type}-${p.symbol}`}>
+                  <td>{p.symbol}</td>
+                  <td>
+                    <span className={`badge ${p.action}`}>{p.action}</span>
+                  </td>
+                  <td>{p.prediction_return?.toFixed(4)}</td>
+                  <td>{p.samples}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="muted">No prediction for this asset yet. Run ml_predict.py.</div>
         )}
       </section>
     </div>

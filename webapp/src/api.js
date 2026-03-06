@@ -27,3 +27,13 @@ export async function fetchSymbols(assetType) {
   if (!r.ok) throw new Error('API symbols failed')
   return r.json()
 }
+
+export async function fetchPredictions(assetType, symbol) {
+  const params = []
+  if (assetType) params.push(`asset_type=${assetType}`)
+  if (symbol) params.push(`symbol=${symbol}`)
+  const query = params.length ? `?${params.join('&')}` : ''
+  const r = await fetch(`${BASE}/predict${query}`)
+  if (!r.ok) throw new Error('API predict failed')
+  return r.json()
+}

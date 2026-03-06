@@ -56,3 +56,9 @@ button:disabled { opacity: 0.6; cursor: not-allowed; }
 .badge.sell { background: #dc262633; color: #fca5a5; border: 1px solid #dc2626; }
 .badge.hold { background: #2563eb33; color: #93c5fd; border: 1px solid #2563eb; }
 .error { color: #f87171; margin-bottom: 8px; }
+.predictions { margin-top: 14px; }
+.pred-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.muted { color: #94a3b8; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { padding: 8px; border-bottom: 1px solid #1f2937; text-align: left; }
+th { color: #cbd5e1; }
